@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/m-lab/token-exchange/internal/auth"
-	"github.com/m-lab/token-exchange/internal/store"
+	"github.com/robertodauria/token-exchange/internal/auth"
+	"github.com/robertodauria/token-exchange/internal/store"
 )
 
 type ExchangeHandler struct {

@@ -10,9 +10,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/m-lab/token-exchange/internal/auth"
-	"github.com/m-lab/token-exchange/internal/handler"
-	"github.com/m-lab/token-exchange/internal/store"
+	"github.com/robertodauria/token-exchange/internal/auth"
+	"github.com/robertodauria/token-exchange/internal/handler"
+	"github.com/robertodauria/token-exchange/internal/store"
+)
+
+const (
+	jwkPrivKeyPath = "/secrets/jwk-priv.json"
 )
 
 func main() {
@@ -27,7 +31,7 @@ func main() {
 	// Initialize JWT signer
 	keyPath := os.Getenv("PRIVATE_KEY_PATH")
 	if keyPath == "" {
-		keyPath = "/secrets/private.pem"
+		keyPath = jwkPrivKeyPath
 	}
 	log.Printf("Using private key from: %s", keyPath)
 

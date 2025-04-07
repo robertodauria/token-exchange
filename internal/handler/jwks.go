@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/m-lab/token-exchange/internal/auth"
+	"github.com/robertodauria/token-exchange/internal/auth"
 )
 
 type JWKSHandler struct {
