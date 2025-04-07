@@ -1,74 +1,94 @@
 package auth
 
 import (
-	"crypto/rsa"
-	"crypto/x509"
-	"encoding/pem"
+	"encoding/json"
 	"fmt"
 	"os"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
+	"github.com/go-jose/go-jose/v4"
+	"github.com/go-jose/go-jose/v4/jwt"
+	"github.com/google/uuid"
 )
 
 type JWTSigner struct {
-	privateKey *rsa.PrivateKey
+	signer    jose.Signer
+	publicJWK jose.JSONWebKey
 }
 
 type Claims struct {
+	jwt.Claims
 	Organization string `json:"org"`
-	jwt.RegisteredClaims
 }
 
+// NewJWTSigner loads a private key from a JWK file and prepares a signer.
 func NewJWTSigner(keyPath string) (*JWTSigner, error) {
-	// Read private key file
+	// Read private key JWK file
 	keyBytes, err := os.ReadFile(keyPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read private key: %w", err)
+		return nil, fmt.Errorf("failed to read private key file %s: %w", keyPath, err)
 	}
 
-	// Parse PEM block
-	block, _ := pem.Decode(keyBytes)
-	if block == nil {
-		return nil, fmt.Errorf("failed to parse PEM block")
+	// Unmarshal the raw JSON into a jose.JSONWebKey
+	var privateJWK jose.JSONWebKey
+	if err := json.Unmarshal(keyBytes, &privateJWK); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal JWK from %s: %w", keyPath, err)
 	}
 
-	// Parse private key
-	pkcs8Key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	// Check if the key is private (required for signing)
+	if privateJWK.IsPublic() {
+		return nil, fmt.Errorf("JWK in %s is not a private key", keyPath)
+	}
+
+	// Ensure the key has a Key ID (kid)
+	if privateJWK.KeyID == "" {
+		return nil, fmt.Errorf("JWK in %s must have a 'kid' (Key ID)", keyPath)
+	}
+
+	// Create the signer using the private key
+	signerOpts := (&jose.SignerOptions{}).WithHeader(jose.HeaderKey("kid"), privateJWK.KeyID)
+
+	signer, err := jose.NewSigner(jose.SigningKey{
+		Algorithm: jose.EdDSA,
+		Key:       privateJWK.Key,
+	}, signerOpts)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse private key: %w", err)
-	}
-	var ok bool
-	privateKey, ok := pkcs8Key.(*rsa.PrivateKey)
-	if !ok {
-		return nil, fmt.Errorf("private key is not RSA")
+		return nil, fmt.Errorf("failed to create jose signer: %w", err)
 	}
 
-	return &JWTSigner{privateKey: privateKey}, nil
+	// Store the public part of the key for the JWKS endpoint
+	publicJWK := privateJWK.Public()
 
+	return &JWTSigner{
+		signer:    signer,
+		publicJWK: publicJWK,
+	}, nil
 }
 
 func (s *JWTSigner) GenerateToken(org string) (string, error) {
 	now := time.Now()
+	expiry := now.Add(time.Hour) // Token expiry: 1 hour
 
 	claims := Claims{
 		Organization: org,
-		RegisteredClaims: jwt.RegisteredClaims{
-			Issuer:    "token-exchange-service",
-			Audience:  jwt.ClaimStrings{"token-exchange-service"},
+		Claims: jwt.Claims{
+			ID:        uuid.New().String(),
+			Issuer:    "token-exchange",
 			IssuedAt:  jwt.NewNumericDate(now),
-			ExpiresAt: jwt.NewNumericDate(now.Add(time.Hour)),
 			NotBefore: jwt.NewNumericDate(now),
+			Expiry:    jwt.NewNumericDate(expiry),
 		},
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
-	token.Header["kid"] = "1"
-
-	signedToken, err := token.SignedString(s.privateKey)
+	signedToken, err := jwt.Signed(s.signer).Claims(claims).Serialize()
 	if err != nil {
-		return "", fmt.Errorf("failed to sign token: %w", err)
+		return "", fmt.Errorf("failed to sign claims: %w", err)
 	}
 
 	return signedToken, nil
+}
+
+// GetPublicJWK returns the public key in jose.JSONWebKey format.
+func (s *JWTSigner) GetPublicJWK() jose.JSONWebKey {
+	return s.publicJWK
 }

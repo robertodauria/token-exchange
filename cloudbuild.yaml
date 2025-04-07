@@ -20,8 +20,9 @@ steps:
   # 2. Push the container image to Artifact Registry
   - name: "gcr.io/cloud-builders/docker"
     id: Push
-    args: ["push", "${_REGION}-docker.pkg.dev/${PROJECT_ID}/m-lab/${_SERVICE_NAME}"]
-    waitFor: ['Build'] # Ensure build is finished before pushing
+    args:
+      ["push", "${_REGION}-docker.pkg.dev/${PROJECT_ID}/m-lab/${_SERVICE_NAME}"]
+    waitFor: ["Build"] # Ensure build is finished before pushing
 
   # 3. Deploy to Cloud Run
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
@@ -29,19 +30,24 @@ steps:
     entrypoint: gcloud
     args:
       [
-        "run", "deploy", "${_SERVICE_NAME}",
-        "--image", "${_REGION}-docker.pkg.dev/${PROJECT_ID}/m-lab/${_SERVICE_NAME}:$SHORT_SHA",
-        "--platform", "managed",
-        "--region", "${_REGION}",
+        "run",
+        "deploy",
+        "${_SERVICE_NAME}",
+        "--image",
+        "${_REGION}-docker.pkg.dev/${PROJECT_ID}/m-lab/${_SERVICE_NAME}:$SHORT_SHA",
+        "--platform",
+        "managed",
+        "--region",
+        "${_REGION}",
         "--allow-unauthenticated",
         "--set-secrets=/secrets/jwk-priv.json=${_SECRET_NAME}:latest",
         "--set-env-vars=PROJECT_ID=${PROJECT_ID}",
         "--memory=256Mi",
         "--cpu=1",
-        "--project=${PROJECT_ID}"
+        "--project=${PROJECT_ID}",
       ]
-    waitFor: ['Push']
+    waitFor: ["Push"]
 
 images:
-  - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_IMAGE_REPO}/${_SERVICE_NAME}:$SHORT_SHA"
-  - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_IMAGE_REPO}/${_SERVICE_NAME}:latest"
+  - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/m-lab/${_SERVICE_NAME}:$SHORT_SHA"
+  - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/m-lab/${_SERVICE_NAME}:latest"

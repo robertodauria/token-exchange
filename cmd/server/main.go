@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/m-lab/go/rtx"
 	"github.com/robertodauria/token-exchange/internal/auth"
 	"github.com/robertodauria/token-exchange/internal/handler"
 	"github.com/robertodauria/token-exchange/internal/store"
@@ -50,9 +51,7 @@ func main() {
 	namespace := "credentials"
 
 	datastoreClient, err := store.NewDatastoreClient(context.Background(), projectID, namespace)
-	if err != nil {
-		log.Fatalf("Failed to initialize Datastore client: %v", err)
-	}
+	rtx.Must(err, "Failed to initialize Datastore client")
 	defer datastoreClient.Close()
 
 	mux := http.NewServeMux()
