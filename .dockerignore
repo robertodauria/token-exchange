@@ -1,0 +1,10 @@
+# Git files
+.git
+.gitignore
+
+# Docker files
+.dockerignore
+Dockerfile
+
+cloudbuild.yaml
+*.md

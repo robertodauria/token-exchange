@@ -2,20 +2,17 @@
 FROM golang:1.24-alpine AS builder
 
 WORKDIR /app
-COPY . .
+COPY go.mod go.sum ./
 RUN go mod download
-RUN CGO_ENABLED=0 go build -o /server ./cmd/server
+COPY . .
+RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o /server ./cmd/server
 
-FROM alpine:3.21
-# Create directory for secrets
-RUN mkdir -p /secrets
-# Copy the binary
+FROM gcr.io/distroless/static-debian12
+
+# Copy the built static binary from the builder stage
 COPY --from=builder /server /server
-# Create non-root user
-RUN adduser -D appuser
-USER appuser
 
-# Expose port
+# Expose port (metadata)
 EXPOSE 8080
 
 # Command to run
