@@ -5,7 +5,6 @@ substitutions:
   _SECRET_NAME: token-exchange-private-key
 steps:
   # 1. Build the container image
-  # Tag with both 'latest' and the specific commit SHA for traceability
   - name: "gcr.io/cloud-builders/docker"
     id: Build
     args:
@@ -19,31 +18,29 @@ steps:
       ]
 
   # 2. Push the container image to Artifact Registry
-  # Pushing the repository name without a tag pushes all tags (latest and SHA)
   - name: "gcr.io/cloud-builders/docker"
     id: Push
     args: ["push", "${_REGION}-docker.pkg.dev/${PROJECT_ID}/m-lab/${_SERVICE_NAME}"]
     waitFor: ['Build'] # Ensure build is finished before pushing
 
-  # 3. Deploy to Cloud Run using the specific image built (tagged with SHA)
+  # 3. Deploy to Cloud Run
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     id: Deploy
     entrypoint: gcloud
     args:
       [
         "run", "deploy", "${_SERVICE_NAME}",
-        "--image", "${_REGION}-docker.pkg.dev/${PROJECT_ID}/m-lab/${_SERVICE_NAME}:$SHORT_SHA", # Deploy specific SHA-tagged image
+        "--image", "${_REGION}-docker.pkg.dev/${PROJECT_ID}/m-lab/${_SERVICE_NAME}:$SHORT_SHA",
         "--platform", "managed",
         "--region", "${_REGION}",
         "--allow-unauthenticated",
-        # Ensure the Cloud Build service account has Secret Manager Secret Accessor role
-        "--set-secrets=/secrets/jwk-priv.json=${_SECRET_NAME}:${_SECRET_VERSION}",
-        "--set-env-vars=PROJECT_ID=${PROJECT_ID}", # Pass project ID to the running service
+        "--set-secrets=/secrets/jwk-priv.json=${_SECRET_NAME}:latest",
+        "--set-env-vars=PROJECT_ID=${PROJECT_ID}",
         "--memory=256Mi",
         "--cpu=1",
-        "--project=${PROJECT_ID}" # Specify the project for the deployment command
+        "--project=${PROJECT_ID}"
       ]
-    waitFor: ['Push'] # Ensure image is pushed before deploying
+    waitFor: ['Push']
 
 images:
   - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_IMAGE_REPO}/${_SERVICE_NAME}:$SHORT_SHA"
