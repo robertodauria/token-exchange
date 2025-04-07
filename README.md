@@ -1,5 +1,8 @@
 # Token Exchange Service
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/robertodauria/token-exchange)](https://goreportcard.com/report/github.com/robertodauria/token-exchange)
+[![Coverage Status](https://coveralls.io/repos/github/robertodauria/token-exchange/badge.svg?branch=main)](https://coveralls.io/github/robertodauria/token-exchange?branch=main)
+
 A Cloud Run service that exchanges API keys for signed JWTs to be used with M-Lab services.
 
 ## Prerequisites
@@ -121,4 +124,4 @@ go run cmd/server/main.go
 
 ## Secret Configuration
 
-The service expects the signing key to be mounted at `/secrets/private.pem` in JSON format. In Cloud Run, this is configured through the `--set-secrets` flag in the deployment script.
+The service expects the signing key to be mounted at `/secrets/jwk-priv.json`. In Cloud Run, this is configured through the `--set-secrets` flag in the deployment script.
